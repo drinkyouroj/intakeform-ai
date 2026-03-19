@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -11,11 +12,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { Settings, Check, Loader2, ArrowLeft, Eye } from 'lucide-react'
+import { Settings, Check, Loader2, ArrowLeft, Eye, PenLine } from 'lucide-react'
 import { InlineEdit } from './inline-edit'
 import { QuestionList } from './question-list'
 import { QuestionDetail } from './question-detail'
 import { FormSettingsSheet } from './form-settings-sheet'
+import { FormPreview } from './form-preview'
 import {
   updateForm,
   updateQuestion,
@@ -64,6 +66,7 @@ export function FormEditor({ initialForm, initialQuestions }: FormEditorProps) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
+  const [isPreview, setIsPreview] = useState(false)
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -243,9 +246,22 @@ export function FormEditor({ initialForm, initialQuestions }: FormEditorProps) {
         <div className="ml-auto flex items-center gap-2">
           <SaveIndicator status={saveStatus} />
 
-          <Button variant="ghost" size="sm" disabled>
-            <Eye data-icon="inline-start" />
-            <span className="hidden sm:inline">Preview</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsPreview((prev) => !prev)}
+          >
+            {isPreview ? (
+              <>
+                <PenLine data-icon="inline-start" />
+                <span className="hidden sm:inline">Edit</span>
+              </>
+            ) : (
+              <>
+                <Eye data-icon="inline-start" />
+                <span className="hidden sm:inline">Preview</span>
+              </>
+            )}
           </Button>
 
           <Button
@@ -260,35 +276,70 @@ export function FormEditor({ initialForm, initialQuestions }: FormEditorProps) {
       </div>
 
       {/* Main content */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left panel: question list */}
-        <div className="w-full lg:w-[400px] lg:shrink-0 border-r flex flex-col">
-          <QuestionList
-            questions={normalizedQuestions}
-            selectedId={selectedQuestionId}
-            onSelect={handleQuestionSelect}
-            onReorder={handleReorder}
-            onAdd={handleAddQuestion}
-            onDelete={handleDeleteQuestion}
-          />
-        </div>
-
-        {/* Right panel: question detail (desktop) */}
-        <div className="hidden lg:flex flex-1 flex-col min-h-0">
-          {normalizedQuestion ? (
-            <ScrollArea className="flex-1">
-              <QuestionDetail
-                question={normalizedQuestion}
-                onChange={handleQuestionChange}
+      <AnimatePresence mode="wait">
+        {isPreview ? (
+          <motion.div
+            key="preview"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex-1 min-h-0 overflow-y-auto bg-muted/20"
+          >
+            <FormPreview
+              questions={questionsList.map((q) => ({
+                id: q.id,
+                prompt: q.prompt,
+                type: q.type,
+                options: q.options as string[] | null,
+                aiFollowUp: q.aiFollowUp as {
+                  enabled: boolean
+                  maxFollowUps: number
+                  systemPrompt?: string
+                } | null,
+              }))}
+              formTitle={form.title}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="editor"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex flex-1 min-h-0"
+          >
+            {/* Left panel: question list */}
+            <div className="w-full lg:w-[400px] lg:shrink-0 border-r flex flex-col">
+              <QuestionList
+                questions={normalizedQuestions}
+                selectedId={selectedQuestionId}
+                onSelect={handleQuestionSelect}
+                onReorder={handleReorder}
+                onAdd={handleAddQuestion}
+                onDelete={handleDeleteQuestion}
               />
-            </ScrollArea>
-          ) : (
-            <div className="flex flex-1 items-center justify-center text-muted-foreground">
-              <p>Select a question to edit its details.</p>
             </div>
-          )}
-        </div>
-      </div>
+
+            {/* Right panel: question detail (desktop) */}
+            <div className="hidden lg:flex flex-1 flex-col min-h-0">
+              {normalizedQuestion ? (
+                <ScrollArea className="flex-1">
+                  <QuestionDetail
+                    question={normalizedQuestion}
+                    onChange={handleQuestionChange}
+                  />
+                </ScrollArea>
+              ) : (
+                <div className="flex flex-1 items-center justify-center text-muted-foreground">
+                  <p>Select a question to edit its details.</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile detail sheet */}
       <Sheet open={mobileDetailOpen} onOpenChange={setMobileDetailOpen}>
