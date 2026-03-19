@@ -6,7 +6,6 @@ import { markBriefReviewed } from '@/lib/actions/briefs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import { MessageResponse } from '@/components/ai-elements/message'
 import { CheckCircle2, Clock } from 'lucide-react'
 

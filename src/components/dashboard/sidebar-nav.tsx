@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
@@ -162,14 +162,10 @@ export function MobileHeader() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
 
-  // Auto-close sheet on route change
-  useEffect(() => {
-    setOpen(false)
-  }, [pathname])
-
   return (
     <header className="flex lg:hidden items-center h-14 border-b px-4 bg-card">
-      <Sheet open={open} onOpenChange={setOpen}>
+      {/* key={pathname} remounts Sheet on route change, resetting open to false */}
+      <Sheet key={pathname} open={open} onOpenChange={setOpen}>
         <SheetTrigger
           render={
             <Button variant="ghost" size="icon-sm">

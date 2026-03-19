@@ -7,7 +7,7 @@ import { eq, desc, sql, inArray } from 'drizzle-orm'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Plus, FileText, Pencil, Copy, ExternalLink } from 'lucide-react'
+import { Plus, FileText, Pencil, ExternalLink } from 'lucide-react'
 
 export default async function FormsListPage() {
   const { userId } = await auth()
@@ -31,8 +31,8 @@ export default async function FormsListPage() {
   const formIds = providerForms.map((f) => f.id)
 
   // Get intake counts per form
-  let intakeCounts = new Map<string, number>()
-  let lastUsedDates = new Map<string, Date | null>()
+  const intakeCounts = new Map<string, number>()
+  const lastUsedDates = new Map<string, Date | null>()
 
   if (formIds.length > 0) {
     const counts = await db
