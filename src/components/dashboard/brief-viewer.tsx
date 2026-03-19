@@ -2,12 +2,14 @@
 
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { markBriefReviewed } from '@/lib/actions/briefs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MessageResponse } from '@/components/ai-elements/message'
 import { CheckCircle2, Clock } from 'lucide-react'
+import { staggerContainer, staggerChild } from '@/lib/motion'
 
 interface KeyFlag {
   label: string
@@ -71,9 +73,17 @@ export function BriefViewer({
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      variants={staggerContainer}
+      initial="initial"
+      animate="animate"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div
+        className="flex items-center justify-between"
+        variants={staggerChild}
+      >
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">Pre-Read Brief</h1>
           {isReviewed && (
@@ -103,50 +113,56 @@ export function BriefViewer({
             )}
           </Button>
         )}
-      </div>
+      </motion.div>
 
       {/* Brief Content */}
-      <Card>
-        <CardContent>
-          <article className="prose prose-sm dark:prose-invert max-w-none">
-            <MessageResponse>{content}</MessageResponse>
-          </article>
-        </CardContent>
-      </Card>
+      <motion.div variants={staggerChild}>
+        <Card>
+          <CardContent>
+            <article className="prose prose-sm dark:prose-invert max-w-none">
+              <MessageResponse>{content}</MessageResponse>
+            </article>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Key Flags */}
       {structured.keyFlags.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Key Flags</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {structured.keyFlags.map((flag, i) => (
-                <FlagBadge key={`${flag.label}-${i}`} flag={flag} />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <motion.div variants={staggerChild}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Key Flags</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {structured.keyFlags.map((flag, i) => (
+                  <FlagBadge key={`${flag.label}-${i}`} flag={flag} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
 
       {/* First Call Questions */}
       {structured.firstCallQuestions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>First Call Questions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ol className="list-decimal list-inside space-y-2 text-sm">
-              {structured.firstCallQuestions.map((question, i) => (
-                <li key={i} className="leading-relaxed">
-                  {question}
-                </li>
-              ))}
-            </ol>
-          </CardContent>
-        </Card>
+        <motion.div variants={staggerChild}>
+          <Card>
+            <CardHeader>
+              <CardTitle>First Call Questions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="list-decimal list-inside space-y-2 text-sm">
+                {structured.firstCallQuestions.map((question, i) => (
+                  <li key={i} className="leading-relaxed">
+                    {question}
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   )
 }

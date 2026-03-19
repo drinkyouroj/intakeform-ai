@@ -85,10 +85,10 @@ export function QuestionDisplay({
     <div className="py-6">
       {/* Question header */}
       <div className="mb-3">
-        <span className="text-sm font-medium text-violet-500 dark:text-violet-400">
+        <span className="text-sm font-medium text-primary">
           {index + 1}.
         </span>
-        <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mt-1">
+        <h3 className="text-lg font-medium text-foreground mt-1">
           {prompt}
         </h3>
       </div>
@@ -118,13 +118,13 @@ export function QuestionDisplay({
                 key={option}
                 className={cn(
                   'flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer transition-colors',
-                  'hover:bg-zinc-50 dark:hover:bg-zinc-900',
+                  'hover:bg-muted',
                   currentAnswer === option &&
                     'border-violet-300 bg-violet-50/50 dark:border-violet-700 dark:bg-violet-950/30',
                 )}
               >
                 <RadioGroupItem value={option} />
-                <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                <span className="text-sm text-foreground">
                   {option}
                 </span>
               </label>
@@ -208,7 +208,7 @@ function MultiselectInput({
             key={option}
             className={cn(
               'flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer transition-colors',
-              'hover:bg-zinc-50 dark:hover:bg-zinc-900',
+              'hover:bg-muted',
               isChecked &&
                 'border-violet-300 bg-violet-50/50 dark:border-violet-700 dark:bg-violet-950/30',
             )}
@@ -248,7 +248,7 @@ function MultiselectInput({
                 </svg>
               )}
             </div>
-            <span className="text-sm text-zinc-700 dark:text-zinc-300">
+            <span className="text-sm text-foreground">
               {option}
             </span>
           </label>
@@ -278,10 +278,10 @@ function ScaleInput({
           onClick={() => onAnswer(String(n))}
           className={cn(
             'size-10 rounded-lg border text-sm font-medium transition-colors',
-            'hover:bg-zinc-50 dark:hover:bg-zinc-900',
+            'hover:bg-muted',
             currentValue === n
               ? 'bg-violet-500 border-violet-500 text-white hover:bg-violet-600'
-              : 'border-input text-zinc-700 dark:text-zinc-300',
+              : 'border-input text-foreground',
           )}
         >
           {n}

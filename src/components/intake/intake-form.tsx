@@ -314,13 +314,13 @@ export function IntakeForm({
     return (
       <div className="max-w-2xl mx-auto px-4 py-16">
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-zinc-100 dark:bg-zinc-800 rounded w-2/3" />
-          <div className="h-4 bg-zinc-100 dark:bg-zinc-800 rounded w-1/2" />
+          <div className="h-8 bg-muted rounded w-2/3" />
+          <div className="h-4 bg-muted rounded w-1/2" />
           <div className="space-y-8 mt-12">
             {[1, 2, 3].map((i) => (
               <div key={i} className="space-y-3">
-                <div className="h-5 bg-zinc-100 dark:bg-zinc-800 rounded w-3/4" />
-                <div className="h-12 bg-zinc-100 dark:bg-zinc-800 rounded" />
+                <div className="h-5 bg-muted rounded w-3/4" />
+                <div className="h-12 bg-muted rounded" />
               </div>
             ))}
           </div>
@@ -346,7 +346,7 @@ export function IntakeForm({
         transition={{ duration: 0.4 }}
         className="mb-8"
       >
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+        <h1 className="text-2xl font-semibold text-foreground">
           {formTitle}
         </h1>
         {formDescription && (
@@ -357,12 +357,12 @@ export function IntakeForm({
       </motion.header>
 
       {/* Progress */}
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm py-3 -mx-4 px-4 mb-4">
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm py-3 -mx-4 px-4 mb-4">
         <ProgressBar answered={answeredCount} total={totalCount} />
       </div>
 
       {/* Questions */}
-      <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+      <div className="divide-y divide-border">
         {questions.map((q, i) => (
           <motion.div
             key={q.id}
@@ -397,7 +397,7 @@ export function IntakeForm({
           <Button
             onClick={handleComplete}
             disabled={isSubmitting}
-            className="w-full h-12 text-base font-medium bg-violet-600 hover:bg-violet-700 text-white"
+            className="w-full h-12 text-base font-medium"
           >
             {isSubmitting ? 'Submitting...' : 'Complete'}
           </Button>
