@@ -1,4 +1,5 @@
 import { generateText, Output } from 'ai'
+import { gateway } from '@ai-sdk/gateway'
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
 import { getAIModels } from './config'
@@ -40,7 +41,7 @@ export async function generateFollowUp(
   const prompt = buildFollowUpPrompt(input)
 
   const { output, usage } = await generateText({
-    model: models.followUp,
+    model: gateway(models.followUp),
     output: Output.object({ schema: followUpSchema }),
     prompt,
   })

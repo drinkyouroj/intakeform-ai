@@ -208,7 +208,13 @@ export async function POST(req: Request) {
       )
     } catch (error) {
       // AI failure is non-fatal — continue without follow-up
-      console.error('[session/answer] Follow-up generation failed:', error)
+      console.error('[session/answer] Follow-up generation failed:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        model: 'groq/llama-3.3-70b-versatile',
+        questionId,
+        sessionId,
+      })
     }
   }
 
