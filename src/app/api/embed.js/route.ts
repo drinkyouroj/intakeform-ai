@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://intakeform.ai'
+export async function GET(req: NextRequest) {
+  // Derive the app URL from the request so it works on any deployment (preview, production, localhost)
+  const requestUrl = new URL(req.url)
+  const appUrl = `${requestUrl.protocol}//${requestUrl.host}`
 
   const script = `
 (function() {
