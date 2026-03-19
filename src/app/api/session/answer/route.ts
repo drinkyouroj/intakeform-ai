@@ -206,15 +206,20 @@ export async function POST(req: Request) {
           latencyMs: generation.latencyMs,
         }),
       )
-    } catch (error) {
+    } catch (error: unknown) {
       // AI failure is non-fatal — continue without follow-up
-      console.error('[session/answer] Follow-up generation failed:', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
+      const err = error as Record<string, unknown>
+      console.error('[session/answer] Follow-up generation failed:', JSON.stringify({
+        message: err?.message ?? err?.toString?.() ?? 'unknown',
+        name: err?.name,
+        cause: err?.cause,
+        statusCode: err?.statusCode,
+        responseBody: err?.responseBody,
+        url: err?.url,
         model: 'groq/llama-3.3-70b-versatile',
         questionId,
         sessionId,
-      })
+      }, null, 2))
     }
   }
 

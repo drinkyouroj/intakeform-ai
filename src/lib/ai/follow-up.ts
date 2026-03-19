@@ -1,4 +1,4 @@
-import { generateText, Output } from 'ai'
+import { generateText } from 'ai'
 import { gateway } from '@ai-sdk/gateway'
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
@@ -18,6 +18,18 @@ export interface FollowUpGenerationResult {
   usage: { promptTokens: number; completionTokens: number }
   latencyMs: number
   model: string
+}
+
+/**
+ * Parse JSON from LLM text response, handling markdown code fences and whitespace.
+ */
+function parseJsonFromText(text: string): unknown {
+  // Strip markdown code fences if present
+  let cleaned = text.trim()
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
+  }
+  return JSON.parse(cleaned)
 }
 
 export async function generateFollowUp(
@@ -40,17 +52,29 @@ export async function generateFollowUp(
 
   const prompt = buildFollowUpPrompt(input)
 
-  const { output, usage } = await generateText({
+  // Use plain generateText (not Output.object) because many Groq models
+  // don't support json_schema response format. Parse JSON from text instead.
+  const { text, usage } = await generateText({
     model: gateway(models.followUp),
-    output: Output.object({ schema: followUpSchema }),
     prompt,
   })
 
   const latencyMs = Date.now() - startTime
 
+  // Parse and validate the JSON response
+  let result: FollowUpResult
+  try {
+    const parsed = parseJsonFromText(text)
+    result = followUpSchema.parse(parsed)
+  } catch {
+    // If parsing fails, default to no follow-up
+    console.warn('[follow-up] Failed to parse AI response as JSON:', text.slice(0, 200))
+    result = { ask_followup: false, question: null }
+  }
+
   return {
     generationId,
-    result: output ?? { ask_followup: false, question: null },
+    result,
     usage: {
       promptTokens: usage?.inputTokens ?? 0,
       completionTokens: usage?.outputTokens ?? 0,
