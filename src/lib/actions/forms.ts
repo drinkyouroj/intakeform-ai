@@ -82,7 +82,8 @@ export async function updateForm(
     }
   }
 
-  const { updatedAt: _ignore, ...updateData } = data
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { updatedAt, ...updateData } = data
   const [updated] = await db
     .update(forms)
     .set({ ...updateData, updatedAt: new Date() })

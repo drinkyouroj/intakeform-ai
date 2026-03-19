@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -46,16 +46,11 @@ const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
 ]
 
 export function QuestionDetail({ question, onChange }: QuestionDetailProps) {
+  // Use question.id as key driver — parent should remount via key={question.id}
   const [prompt, setPrompt] = useState(question.prompt)
   const [options, setOptions] = useState<string[]>(
     (question.options as string[] | null) ?? []
   )
-
-  // Sync state when question changes (different question selected)
-  useEffect(() => {
-    setPrompt(question.prompt)
-    setOptions((question.options as string[] | null) ?? [])
-  }, [question.id, question.prompt, question.options])
 
   const showOptions = question.type === 'select' || question.type === 'multiselect'
 

@@ -4,7 +4,6 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Sheet,
@@ -25,7 +24,6 @@ import {
   addQuestion,
   deleteQuestion,
 } from '@/lib/actions/forms'
-import { cn } from '@/lib/utils'
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved'
 
@@ -327,6 +325,7 @@ export function FormEditor({ initialForm, initialQuestions }: FormEditorProps) {
               {normalizedQuestion ? (
                 <ScrollArea className="flex-1">
                   <QuestionDetail
+                    key={normalizedQuestion.id}
                     question={normalizedQuestion}
                     onChange={handleQuestionChange}
                   />
@@ -349,6 +348,7 @@ export function FormEditor({ initialForm, initialQuestions }: FormEditorProps) {
           </SheetHeader>
           {normalizedQuestion && (
             <QuestionDetail
+              key={normalizedQuestion.id}
               question={normalizedQuestion}
               onChange={handleQuestionChange}
             />
