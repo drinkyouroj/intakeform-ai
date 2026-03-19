@@ -68,6 +68,7 @@ export async function updateForm(
     title?: string
     description?: string | null
     isActive?: boolean
+    styleConfig?: Record<string, unknown>
     updatedAt?: string // ISO string for concurrent-tab detection
   }
 ) {
