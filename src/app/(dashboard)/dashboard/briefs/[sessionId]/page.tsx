@@ -24,8 +24,6 @@ export default async function BriefViewerPage({
     .from(briefs)
     .where(eq(briefs.sessionId, sessionId))
 
-  if (!brief) notFound()
-
   // Fetch the session
   const [session] = await db
     .select()
@@ -50,20 +48,67 @@ export default async function BriefViewerPage({
 
   if (!provider || form.providerId !== provider.id) notFound()
 
-  const metadata = brief.metadata as Record<string, unknown> | null
-  const isReviewed = metadata?.reviewed === true
-
   const state = (session.state ?? {}) as {
-    answers?: Record<string, { value: string | string[]; followUps?: Array<{ question: string; answer: string }> }>
+    answers?: Array<Record<string, unknown>> | Record<string, unknown>
   }
 
-  const answerCount = state.answers ? Object.keys(state.answers).length : 0
-  const followUpCount = state.answers
-    ? Object.values(state.answers).reduce(
-        (sum, a) => sum + (a.followUps?.length ?? 0),
-        0
-      )
-    : 0
+  const answersArray = Array.isArray(state.answers) ? state.answers : Object.values(state.answers ?? {})
+  const answerCount = answersArray.length
+  const followUpCount = answersArray.reduce<number>(
+    (sum, a) => {
+      const fups = (a as Record<string, unknown>).followUps
+      return sum + (Array.isArray(fups) ? fups.length : 0)
+    },
+    0
+  )
+
+  // Brief not yet generated — show pending state
+  if (!brief) {
+    const briefStatus = session.briefStatus ?? 'pending'
+    return (
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <div className="rounded-lg border bg-card p-8 text-center space-y-4">
+            {briefStatus === 'failed' ? (
+              <>
+                <div className="text-destructive text-lg font-medium">Brief Generation Failed</div>
+                <p className="text-muted-foreground">
+                  The AI was unable to generate a brief for this session. The system will retry automatically, or you can contact support.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-center">
+                  <div className="flex gap-1">
+                    {[0, 1, 2].map(i => (
+                      <span key={i} className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" style={{ animationDelay: `${i * 150}ms` }} />
+                    ))}
+                  </div>
+                </div>
+                <div className="text-lg font-medium">Generating Brief...</div>
+                <p className="text-muted-foreground">
+                  The AI is synthesizing the intake session into a structured brief. This usually takes 10-30 seconds. Refresh the page to check progress.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+        <div>
+          <BriefSidebar
+            formName={form.title}
+            completedAt={session.completedAt}
+            createdAt={session.createdAt}
+            answerCount={answerCount}
+            followUpCount={followUpCount}
+            briefCreatedAt={null}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  const metadata = brief.metadata as Record<string, unknown> | null
+  const isReviewed = metadata?.reviewed === true
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
