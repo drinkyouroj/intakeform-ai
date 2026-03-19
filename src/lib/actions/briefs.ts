@@ -1,11 +1,12 @@
 'use server'
 
 import { getDb } from '@/lib/db'
-import { sessions, briefs, questions } from '@/lib/db/schema'
+import { sessions, briefs, questions, forms, providers } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { generateBrief, type BriefData } from '@/lib/ai/brief'
 import { generateFlags } from '@/lib/ai/flags'
 import { trackGeneration } from '@/lib/ai/track'
+import { sendBriefCompletionEmail } from './email'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -202,6 +203,26 @@ export async function generateBriefForSession(sessionId: string) {
       .update(sessions)
       .set({ briefStatus: 'completed', updatedAt: new Date() })
       .where(eq(sessions.id, sessionId))
+
+    // 10. Send email notification to the provider
+    try {
+      const [form] = await db.select().from(forms).where(eq(forms.id, session.formId))
+      if (form) {
+        const [provider] = await db.select().from(providers).where(eq(providers.id, form.providerId))
+        if (provider?.email) {
+          await sendBriefCompletionEmail({
+            providerEmail: provider.email,
+            providerName: provider.name,
+            formTitle: form.title,
+            sessionId,
+            briefSummary: mergedBrief.situationSummary,
+          })
+        }
+      }
+    } catch (emailError) {
+      console.error('[briefs] Failed to send notification email:', emailError)
+      // Non-fatal — brief is already saved
+    }
   } catch (error) {
     console.error(`[briefs] Failed to generate brief for session ${sessionId}:`, error)
 
