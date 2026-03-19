@@ -12,19 +12,21 @@ import { sendBriefCompletionEmail } from './email'
 // Helpers
 // ---------------------------------------------------------------------------
 
-interface SessionAnswer {
+interface SessionAnswerArray {
   questionId: string
-  value: string | string[]
-  followUps?: Array<{ question: string; answer: string }>
+  answer: string
+  followUps?: Array<{ question: string; answer?: string | null }>
 }
 
 interface SessionState {
-  answers?: Record<string, SessionAnswer>
+  answers?: SessionAnswerArray[] | Record<string, unknown>
   [key: string]: unknown
 }
 
 /**
  * Build a human-readable transcript from session state + questions.
+ * Handles both array format [{questionId, answer, followUps}] and
+ * record format {questionId: {value, followUps}}.
  */
 async function buildTranscript(
   formId: string,
@@ -39,26 +41,45 @@ async function buildTranscript(
     .where(eq(questions.formId, formId))
     .orderBy(questions.sortOrder)
 
-  const answers = state.answers ?? {}
+  // Normalize answers to a Map keyed by questionId
+  const answerMap = new Map<string, SessionAnswerArray>()
+  const rawAnswers = state.answers
+  if (Array.isArray(rawAnswers)) {
+    // Array format: [{questionId, answer, followUps}]
+    for (const a of rawAnswers) {
+      const entry = a as SessionAnswerArray
+      if (entry.questionId) {
+        answerMap.set(entry.questionId, entry)
+      }
+    }
+  } else if (rawAnswers && typeof rawAnswers === 'object') {
+    // Record format: {questionId: {value, followUps}}
+    for (const [qId, val] of Object.entries(rawAnswers)) {
+      const v = val as Record<string, unknown>
+      answerMap.set(qId, {
+        questionId: qId,
+        answer: String(v.value ?? v.answer ?? ''),
+        followUps: (v.followUps as SessionAnswerArray['followUps']) ?? [],
+      })
+    }
+  }
+
   const lines: string[] = []
 
   for (let i = 0; i < formQuestions.length; i++) {
     const q = formQuestions[i]
-    const answer = answers[q.id]
+    const answer = answerMap.get(q.id)
     const num = i + 1
 
     lines.push(`Q${num}: ${q.prompt}`)
 
     if (answer) {
-      const displayValue = Array.isArray(answer.value)
-        ? answer.value.join(', ')
-        : String(answer.value)
-      lines.push(`A${num}: ${displayValue}`)
+      lines.push(`A${num}: ${answer.answer}`)
 
       if (answer.followUps?.length) {
         for (const fu of answer.followUps) {
           lines.push(`  Follow-up: ${fu.question}`)
-          lines.push(`  Answer: ${fu.answer}`)
+          lines.push(`  Answer: ${fu.answer ?? '(no answer)'}`)
         }
       }
     } else {
