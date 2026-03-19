@@ -5,7 +5,7 @@
  *
  * Usage:
  *   npx tsx src/lib/ai/eval/runner.ts groq/llama-3.3-70b-versatile
- *   npx tsx src/lib/ai/eval/runner.ts openai/gpt-4o
+ *   npx tsx src/lib/ai/eval/runner.ts openai/gpt-5.4
  *
  * Output: writes JSON results to src/lib/ai/eval/results/<model-slug>-<timestamp>.json
  */
@@ -14,9 +14,12 @@ import { generateText } from 'ai'
 import { gateway } from '@ai-sdk/gateway'
 import { z } from 'zod'
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { evalFixtures, type EvalFixture } from './fixtures'
 import { buildFollowUpPrompt } from '../prompts/follow-up'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const followUpSchema = z.object({
   ask_followup: z.boolean(),
@@ -28,19 +31,32 @@ const followUpSchema = z.object({
 const COST_PER_1M_TOKENS: Record<string, { input: number; output: number }> = {
   'groq/llama-3.3-70b-versatile': { input: 0.59, output: 0.79 },
   'groq/llama-3.1-8b-instant': { input: 0.05, output: 0.08 },
-  'openai/gpt-4o': { input: 2.50, output: 10.0 },
-  'openai/gpt-4o-mini': { input: 0.15, output: 0.60 },
-  'anthropic/claude-sonnet-4-20250514': { input: 3.0, output: 15.0 },
+  'groq/qwen-qwq-32b': { input: 0.29, output: 0.39 },
+  'openai/gpt-5.4': { input: 2.50, output: 10.0 },
+  'openai/gpt-oss-120b': { input: 0.0, output: 0.0 },
+  'openai/gpt-oss-20b': { input: 0.0, output: 0.0 },
+  'anthropic/claude-sonnet-4.6': { input: 3.0, output: 15.0 },
 }
 
 const DEFAULT_COST = { input: 1.0, output: 3.0 }
 
 function parseJsonFromText(text: string): unknown {
   let cleaned = text.trim()
+  // Strip markdown code fences
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
   }
-  return JSON.parse(cleaned)
+  // Try direct parse first
+  try {
+    return JSON.parse(cleaned)
+  } catch {
+    // Fall back: extract first JSON object from the text
+    const match = cleaned.match(/\{[\s\S]*?\}/)
+    if (match) {
+      return JSON.parse(match[0])
+    }
+    throw new Error('No JSON object found in response')
+  }
 }
 
 function estimateCost(
@@ -222,7 +238,7 @@ async function main() {
   console.log(`Total Cost:  $${summary.totalCostUsd.toFixed(6)}`)
 
   // Write results JSON
-  const resultsDir = join(import.meta.dirname, 'results')
+  const resultsDir = join(__dirname, 'results')
   mkdirSync(resultsDir, { recursive: true })
 
   const modelSlug = model.replace(/\//g, '--')
