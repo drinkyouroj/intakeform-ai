@@ -65,7 +65,7 @@ export function CompletionScreen() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.6 }}
-        className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100 mb-3"
+        className="text-2xl font-semibold text-foreground mb-3"
       >
         Thank you!
       </motion.h2>
