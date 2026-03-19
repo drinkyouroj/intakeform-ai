@@ -3,6 +3,8 @@
 import { getDb } from '@/lib/db'
 import { sessions } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { waitUntil } from '@vercel/functions'
+import { generateBriefForSession } from './briefs'
 
 export async function completeSession(sessionId: string) {
   const db = getDb()
@@ -17,6 +19,9 @@ export async function completeSession(sessionId: string) {
     })
     .where(eq(sessions.id, sessionId))
     .returning()
+
+  // Trigger brief generation async (non-blocking)
+  waitUntil(generateBriefForSession(sessionId))
 
   return updated
 }
