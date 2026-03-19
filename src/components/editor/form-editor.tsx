@@ -118,6 +118,13 @@ export function FormEditor({ initialForm, initialQuestions }: FormEditorProps) {
     setForm((prev) => ({ ...prev, isActive: active }))
   }, [])
 
+  const handleStyleConfigChange = useCallback(
+    (styleConfig: { accentColor?: string }) => {
+      setForm((prev) => ({ ...prev, styleConfig }))
+    },
+    []
+  )
+
   // ---------- Question updates ----------
 
   const handleQuestionChange = useCallback(
@@ -365,9 +372,11 @@ export function FormEditor({ initialForm, initialQuestions }: FormEditorProps) {
           title: form.title,
           description: form.description,
           isActive: form.isActive,
+          styleConfig: form.styleConfig as { accentColor?: string } | null,
         }}
         onUpdate={handleFormSettingsUpdate}
         onActiveChange={handleActiveChange}
+        onStyleConfigChange={handleStyleConfigChange}
       />
     </div>
   )
