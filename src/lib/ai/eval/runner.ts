@@ -81,6 +81,27 @@ export interface EvalResult {
   estimatedCostUsd: number
   rawResponse: string
   parseError: boolean
+  rateLimited: boolean
+}
+
+// ── Retry helpers ────────────────────────────────────────────────────
+const MAX_RETRIES = 3
+const BASE_DELAY_MS = 2000
+
+function isRateLimitError(text: string): boolean {
+  const lower = text.toLowerCase()
+  return (
+    lower.includes('rate limit') ||
+    lower.includes('temporarily') ||
+    lower.includes('try again') ||
+    lower.includes('429') ||
+    lower.includes('quota') ||
+    lower.includes('free credits')
+  )
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export interface EvalRunSummary {
@@ -112,33 +133,65 @@ async function runFixture(
   let promptTokens = 0
   let completionTokens = 0
   let parseError = false
+  let rateLimited = false
   let askFollowUp = false
   let followUpQuestion: string | null = null
 
-  try {
-    const { text, usage } = await generateText({
-      model: gateway(model),
-      prompt,
-    })
-
-    rawResponse = text
-    promptTokens = usage?.inputTokens ?? 0
-    completionTokens = usage?.outputTokens ?? 0
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    rawResponse = ''
+    parseError = false
+    rateLimited = false
 
     try {
-      const parsed = parseJsonFromText(text)
-      const validated = followUpSchema.parse(parsed)
-      askFollowUp = validated.ask_followup
-      followUpQuestion = validated.question
-    } catch {
+      const { text, usage } = await generateText({
+        model: gateway(model),
+        prompt,
+      })
+
+      rawResponse = text
+      promptTokens = usage?.inputTokens ?? 0
+      completionTokens = usage?.outputTokens ?? 0
+
+      // Check if the response is a rate limit error disguised as text
+      if (isRateLimitError(text)) {
+        rateLimited = true
+        if (attempt < MAX_RETRIES) {
+          const delay = BASE_DELAY_MS * Math.pow(2, attempt)
+          process.stdout.write(`\n    ⏳ Rate limited, retrying in ${delay / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})...\n    `)
+          await sleep(delay)
+          continue
+        }
+        parseError = true
+        break
+      }
+
+      try {
+        const parsed = parseJsonFromText(text)
+        const validated = followUpSchema.parse(parsed)
+        askFollowUp = validated.ask_followup
+        followUpQuestion = validated.question
+      } catch {
+        parseError = true
+        askFollowUp = false
+        followUpQuestion = null
+      }
+      break // Success — exit retry loop
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err)
+      rawResponse = `ERROR: ${errMsg}`
+
+      if (isRateLimitError(errMsg)) {
+        rateLimited = true
+        if (attempt < MAX_RETRIES) {
+          const delay = BASE_DELAY_MS * Math.pow(2, attempt)
+          process.stdout.write(`\n    ⏳ Rate limited, retrying in ${delay / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})...\n    `)
+          await sleep(delay)
+          continue
+        }
+      }
       parseError = true
-      // If we can't parse, treat as no follow-up (matches production behavior)
-      askFollowUp = false
-      followUpQuestion = null
+      break
     }
-  } catch (err) {
-    rawResponse = `ERROR: ${err instanceof Error ? err.message : String(err)}`
-    parseError = true
   }
 
   const latencyMs = Date.now() - startTime
@@ -159,15 +212,24 @@ async function runFixture(
     estimatedCostUsd: estimateCost(model, promptTokens, completionTokens),
     rawResponse,
     parseError,
+    rateLimited,
   }
 }
 
 function computeSummary(model: string, results: EvalResult[]): EvalRunSummary {
-  const correct = results.filter((r) => r.correct).length
-  const accuracy = correct / results.length
+  // Exclude rate-limited results from accuracy calculations
+  const scoreable = results.filter((r) => !r.rateLimited)
+  const rateLimitedCount = results.length - scoreable.length
+
+  if (rateLimitedCount > 0) {
+    console.log(`\n⚠  ${rateLimitedCount} fixtures were rate-limited and excluded from accuracy metrics`)
+  }
+
+  const correct = scoreable.filter((r) => r.correct).length
+  const accuracy = scoreable.length > 0 ? correct / scoreable.length : 0
 
   // Precision: of all predicted follow-ups, how many were correct?
-  const predictedFollowUp = results.filter(
+  const predictedFollowUp = scoreable.filter(
     (r) => r.actualBehavior === 'should-follow-up'
   )
   const truePositives = predictedFollowUp.filter((r) => r.correct).length
@@ -175,7 +237,7 @@ function computeSummary(model: string, results: EvalResult[]): EvalRunSummary {
     predictedFollowUp.length > 0 ? truePositives / predictedFollowUp.length : 1
 
   // Recall: of all expected follow-ups, how many were predicted?
-  const expectedFollowUp = results.filter(
+  const expectedFollowUp = scoreable.filter(
     (r) => r.expectedBehavior === 'should-follow-up'
   )
   const detectedFollowUp = expectedFollowUp.filter((r) => r.correct).length
@@ -220,17 +282,26 @@ async function main() {
     const result = await runFixture(fixture, model)
     results.push(result)
 
-    const status = result.correct ? 'PASS' : 'FAIL'
-    const icon = result.correct ? '\u2713' : '\u2717'
-    const parseFlag = result.parseError ? ' (PARSE ERROR)' : ''
-    console.log(
-      `${icon} ${status} | ${result.latencyMs}ms | expected=${result.expectedBehavior}, got=${result.actualBehavior}${parseFlag}`
-    )
+    const flag = result.rateLimited
+      ? ' (RATE LIMITED)'
+      : result.parseError
+        ? ' (PARSE ERROR)'
+        : ''
+    if (result.rateLimited) {
+      console.log(`⏭ SKIP | ${result.latencyMs}ms | rate limited after retries${flag}`)
+    } else {
+      const status = result.correct ? 'PASS' : 'FAIL'
+      const icon = result.correct ? '\u2713' : '\u2717'
+      console.log(
+        `${icon} ${status} | ${result.latencyMs}ms | expected=${result.expectedBehavior}, got=${result.actualBehavior}${flag}`
+      )
+    }
   }
 
   const summary = computeSummary(model, results)
 
-  console.log(`\n=== Results ===`)
+  const scoreable = summary.results.filter((r) => !r.rateLimited).length
+  console.log(`\n=== Results (${scoreable}/${summary.fixtureCount} scored) ===`)
   console.log(`Accuracy:    ${(summary.accuracy * 100).toFixed(1)}%`)
   console.log(`Precision:   ${(summary.precision * 100).toFixed(1)}%`)
   console.log(`Recall:      ${(summary.recall * 100).toFixed(1)}%`)
