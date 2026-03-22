@@ -157,11 +157,22 @@ export async function POST(req: Request) {
     currentFollowUpCount < ((aiConfig.maxFollowUps as number) ?? 2)
   ) {
     try {
+      // Build prior exchanges for context (answered follow-ups only)
+      const entryFollowUps =
+        (answerEntry?.followUps as Array<Record<string, unknown>>) ?? []
+      const priorExchanges = entryFollowUps
+        .filter((fu) => fu.answer != null)
+        .map((fu) => ({
+          question: fu.question as string,
+          answer: fu.answer as string,
+        }))
+
       const generation = await generateFollowUp({
         question: questionData?.prompt ?? '',
-        answer: sanitizedAnswer,
+        answer: answerEntry?.answer as string ?? sanitizedAnswer,
         personaContext,
         followUpCount: currentFollowUpCount,
+        priorExchanges,
       })
 
       if (generation.result.ask_followup && generation.result.question) {
