@@ -43,6 +43,8 @@ export function QuestionDisplay({
 }: QuestionDisplayProps) {
   const [localTextValue, setLocalTextValue] = useState(currentAnswer ?? '')
   const answered = currentAnswer !== undefined && currentAnswer !== ''
+  // Lock the input once answered — user must click "Redo" to change
+  const locked = answered
 
   const handleTextBlur = useCallback(() => {
     const trimmed = localTextValue.trim()
@@ -119,26 +121,27 @@ export function QuestionDisplay({
             placeholder="Type your answer..."
             rows={3}
             className="max-h-48"
-            disabled={answered && pendingFollowUp}
+            readOnly={locked}
           />
         )}
 
         {type === 'select' && options && (
           <RadioGroup
             value={currentAnswer ?? undefined}
-            onValueChange={handleSelectChange}
+            onValueChange={locked ? undefined : handleSelectChange}
+            disabled={locked}
           >
             {(options as string[]).map((option) => (
               <label
                 key={option}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer transition-colors',
-                  'hover:bg-muted',
+                  'flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors',
+                  locked ? 'cursor-default' : 'cursor-pointer hover:bg-muted',
                   currentAnswer === option &&
                     'border-violet-300 bg-violet-50/50 dark:border-violet-700 dark:bg-violet-950/30',
                 )}
               >
-                <RadioGroupItem value={option} />
+                <RadioGroupItem value={option} disabled={locked} />
                 <span className="text-sm text-foreground">
                   {option}
                 </span>
@@ -152,6 +155,7 @@ export function QuestionDisplay({
             options={options as string[]}
             currentAnswer={currentAnswer}
             onAnswer={(val) => onAnswer(questionId, val)}
+            disabled={locked}
           />
         )}
 
@@ -161,6 +165,7 @@ export function QuestionDisplay({
             value={currentAnswer ?? ''}
             onChange={handleDateChange}
             className="max-w-xs h-10"
+            readOnly={locked}
           />
         )}
 
@@ -168,6 +173,7 @@ export function QuestionDisplay({
           <ScaleInput
             currentAnswer={currentAnswer}
             onAnswer={(val) => onAnswer(questionId, val)}
+            disabled={locked}
           />
         )}
       </div>
@@ -199,14 +205,17 @@ function MultiselectInput({
   options,
   currentAnswer,
   onAnswer,
+  disabled,
 }: {
   options: string[]
   currentAnswer?: string
   onAnswer: (value: string) => void
+  disabled?: boolean
 }) {
   const selected: string[] = currentAnswer ? currentAnswer.split('||') : []
 
   const toggle = (option: string) => {
+    if (disabled) return
     const next = selected.includes(option)
       ? selected.filter((s) => s !== option)
       : [...selected, option]
@@ -223,8 +232,8 @@ function MultiselectInput({
           <label
             key={option}
             className={cn(
-              'flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer transition-colors',
-              'hover:bg-muted',
+              'flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors',
+              disabled ? 'cursor-default' : 'cursor-pointer hover:bg-muted',
               isChecked &&
                 'border-violet-300 bg-violet-50/50 dark:border-violet-700 dark:bg-violet-950/30',
             )}
@@ -245,7 +254,8 @@ function MultiselectInput({
               }}
               role="checkbox"
               aria-checked={isChecked}
-              tabIndex={0}
+              aria-disabled={disabled}
+              tabIndex={disabled ? -1 : 0}
             >
               {isChecked && (
                 <svg
@@ -279,9 +289,11 @@ function MultiselectInput({
 function ScaleInput({
   currentAnswer,
   onAnswer,
+  disabled,
 }: {
   currentAnswer?: string
   onAnswer: (value: string) => void
+  disabled?: boolean
 }) {
   const currentValue = currentAnswer ? parseInt(currentAnswer, 10) : null
 
@@ -291,12 +303,13 @@ function ScaleInput({
         <button
           key={n}
           type="button"
-          onClick={() => onAnswer(String(n))}
+          onClick={() => !disabled && onAnswer(String(n))}
+          disabled={disabled}
           className={cn(
             'size-10 rounded-lg border text-sm font-medium transition-colors',
-            'hover:bg-muted',
+            disabled ? '' : 'hover:bg-muted',
             currentValue === n
-              ? 'bg-violet-500 border-violet-500 text-white hover:bg-violet-600'
+              ? 'bg-violet-500 border-violet-500 text-white'
               : 'border-input text-foreground',
           )}
         >
