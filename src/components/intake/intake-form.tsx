@@ -225,13 +225,16 @@ export function IntakeForm({
     async (questionId: string, answer: string) => {
       if (!sessionId) return
 
-      // Optimistically update the follow-up answer
+      // Optimistically update the first unanswered follow-up
       setAnswers((prev) => {
         const entry = prev[questionId]
         if (!entry) return prev
         const fups = [...entry.followUps]
-        if (fups.length > 0) {
-          fups[fups.length - 1] = { ...fups[fups.length - 1], answer }
+        const unansweredIdx = fups.findIndex(
+          (fu) => fu.answer === null || fu.answer === undefined,
+        )
+        if (unansweredIdx >= 0) {
+          fups[unansweredIdx] = { ...fups[unansweredIdx], answer }
         }
         return { ...prev, [questionId]: { ...entry, followUps: fups } }
       })
@@ -287,6 +290,78 @@ export function IntakeForm({
     [sessionId],
   )
 
+  // Reset a single question's answer (clears answer + follow-ups)
+  const handleResetQuestion = useCallback(
+    async (questionId: string) => {
+      if (!sessionId) return
+
+      try {
+        const res = await fetch('/api/session/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            questionId,
+            version: versionRef.current,
+          }),
+        })
+
+        if (res.status === 409) {
+          toast.error('Session updated elsewhere. Please refresh.')
+          return
+        }
+
+        if (!res.ok) throw new Error('Failed to reset question')
+
+        const data = await res.json()
+        setVersion(data.version)
+        versionRef.current = data.version
+
+        // Clear the answer from local state
+        setAnswers((prev) => {
+          const next = { ...prev }
+          delete next[questionId]
+          return next
+        })
+      } catch (err) {
+        console.error('[IntakeForm] Reset question failed:', err)
+        toast.error('Failed to reset question. Please try again.')
+      }
+    },
+    [sessionId],
+  )
+
+  // Reset entire session (clear all answers)
+  const handleResetSession = useCallback(async () => {
+    if (!sessionId) return
+
+    try {
+      const res = await fetch('/api/session/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          version: versionRef.current,
+        }),
+      })
+
+      if (res.status === 409) {
+        toast.error('Session updated elsewhere. Please refresh.')
+        return
+      }
+
+      if (!res.ok) throw new Error('Failed to reset session')
+
+      const data = await res.json()
+      setVersion(data.version)
+      versionRef.current = data.version
+      setAnswers({})
+    } catch (err) {
+      console.error('[IntakeForm] Reset session failed:', err)
+      toast.error('Failed to reset form. Please try again.')
+    }
+  }, [sessionId])
+
   // Complete the session
   const handleComplete = useCallback(async () => {
     if (!sessionId) return
@@ -302,6 +377,33 @@ export function IntakeForm({
       setIsSubmitting(false)
     }
   }, [sessionId, formId])
+
+  // Track reset count per question to force remount via key
+  const [resetCounts, setResetCounts] = useState<Record<string, number>>({})
+
+  // Wrap handleResetQuestion to also bump the reset counter
+  const handleResetQuestionWithRemount = useCallback(
+    async (questionId: string) => {
+      await handleResetQuestion(questionId)
+      setResetCounts((prev) => ({
+        ...prev,
+        [questionId]: (prev[questionId] ?? 0) + 1,
+      }))
+    },
+    [handleResetQuestion],
+  )
+
+  // Wrap handleResetSession to bump all reset counters
+  const handleResetSessionWithRemount = useCallback(async () => {
+    await handleResetSession()
+    setResetCounts((prev) => {
+      const next: Record<string, number> = {}
+      for (const q of questions) {
+        next[q.id] = (prev[q.id] ?? 0) + 1
+      }
+      return next
+    })
+  }, [handleResetSession, questions])
 
   // Count answered primary questions
   const answeredCount = questions.filter(
@@ -358,14 +460,28 @@ export function IntakeForm({
 
       {/* Progress */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm py-3 -mx-4 px-4 mb-4">
-        <ProgressBar answered={answeredCount} total={totalCount} />
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <ProgressBar answered={answeredCount} total={totalCount} />
+          </div>
+          {answeredCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetSessionWithRemount}
+              className="text-xs text-muted-foreground shrink-0"
+            >
+              Start over
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Questions */}
       <div className="divide-y divide-border">
         {questions.map((q, i) => (
           <motion.div
-            key={q.id}
+            key={`${q.id}-${resetCounts[q.id] ?? 0}`}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: i * 0.05 }}
@@ -381,6 +497,7 @@ export function IntakeForm({
               pendingFollowUp={pendingFollowUp === q.id}
               onAnswer={handleAnswer}
               onFollowUpAnswer={handleFollowUpAnswer}
+              onReset={handleResetQuestionWithRemount}
             />
           </motion.div>
         ))}

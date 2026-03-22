@@ -41,6 +41,7 @@ export default async function DashboardPage() {
   let aiCostThisMonth = 0
   let recentIntakeRows: {
     sessionId: string
+    formId: string
     formTitle: string
     clientName: string
     status: string
@@ -130,6 +131,7 @@ export default async function DashboardPage() {
         (meta?.name as string) || (meta?.email as string) || 'Anonymous'
       return {
         sessionId: s.id,
+        formId: s.formId,
         formTitle: formMap.get(s.formId) ?? 'Unknown Form',
         clientName,
         status: s.status ?? 'active',

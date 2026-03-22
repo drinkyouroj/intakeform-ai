@@ -7,7 +7,8 @@ import { eq, desc, sql, inArray } from 'drizzle-orm'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Plus, FileText, Pencil, ExternalLink } from 'lucide-react'
+import { Plus, FileText } from 'lucide-react'
+import { FormCardActions } from '@/components/dashboard/form-card-actions'
 
 export default async function FormsListPage() {
   const { userId } = await auth()
@@ -126,21 +127,17 @@ export default async function FormsListPage() {
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    render={<Link href={`/form/${form.id}`} target="_blank" />}
-                    title="Preview form"
-                  >
-                    <ExternalLink />
-                  </Button>
-                  <Button
                     variant="outline"
                     size="sm"
                     render={<Link href={`/dashboard/forms/${form.id}/edit`} />}
                   >
-                    <Pencil data-icon="inline-start" />
                     Edit
                   </Button>
+                  <FormCardActions
+                    formId={form.id}
+                    formTitle={form.title}
+                    hasIntakes={count > 0}
+                  />
                 </div>
               </Card>
             )
