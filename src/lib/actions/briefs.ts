@@ -1,5 +1,6 @@
 'use server'
 
+import { auth } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
 import { sessions, briefs, questions, forms, providers } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -269,15 +270,29 @@ export async function getBrief(sessionId: string) {
 }
 
 export async function markBriefReviewed(briefId: string) {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Not authenticated')
+
   const db = getDb()
 
-  // Fetch existing metadata, then merge reviewed flag
+  // Verify ownership: brief → session → form → provider
+  const [provider] = await db
+    .select({ id: providers.id })
+    .from(providers)
+    .where(eq(providers.clerkUserId, userId))
+  if (!provider) throw new Error('Provider not found')
+
   const [existing] = await db
-    .select({ metadata: briefs.metadata })
+    .select({
+      metadata: briefs.metadata,
+      providerId: forms.providerId,
+    })
     .from(briefs)
+    .innerJoin(sessions, eq(briefs.sessionId, sessions.id))
+    .innerJoin(forms, eq(sessions.formId, forms.id))
     .where(eq(briefs.id, briefId))
 
-  if (!existing) return null
+  if (!existing || existing.providerId !== provider.id) return null
 
   const meta = (existing.metadata ?? {}) as Record<string, unknown>
 

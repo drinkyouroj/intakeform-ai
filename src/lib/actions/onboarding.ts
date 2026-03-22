@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
 import { providers, forms, questions } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { TEMPLATES } from '@/lib/db/templates'
 
 export async function selectProfession(profession: string) {
@@ -70,10 +70,11 @@ export async function activateForm(formId: string) {
     .where(eq(providers.clerkUserId, userId))
   if (!provider) throw new Error('Provider not found')
 
+  // Verify the form belongs to this provider before activating
   await db
     .update(forms)
     .set({ isActive: true })
-    .where(eq(forms.id, formId))
+    .where(and(eq(forms.id, formId), eq(forms.providerId, provider.id)))
 
   await db
     .update(providers)
