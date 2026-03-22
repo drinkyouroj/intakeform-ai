@@ -53,13 +53,13 @@ export function FormCardActions({ formId, formTitle, hasIntakes }: FormCardActio
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
-            onSelect={() => window.open(`/form/${formId}`, '_blank')}
+            onClick={() => window.open(`/form/${formId}`, '_blank')}
           >
             <ExternalLink />
             Preview
           </DropdownMenuItem>
           <DropdownMenuItem
-            onSelect={() => router.push(`/dashboard/forms/${formId}/edit`)}
+            onClick={() => router.push(`/dashboard/forms/${formId}/edit`)}
           >
             <Pencil />
             Edit
@@ -67,7 +67,7 @@ export function FormCardActions({ formId, formTitle, hasIntakes }: FormCardActio
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
-            onSelect={() => setDeleteOpen(true)}
+            onClick={() => setDeleteOpen(true)}
           >
             <Trash2 />
             Delete
