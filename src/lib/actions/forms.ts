@@ -3,8 +3,8 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { getDb } from '@/lib/db'
-import { forms, questions, providers } from '@/lib/db/schema'
-import { eq, and, asc, count } from 'drizzle-orm'
+import { forms, questions, providers, sessions, briefs, generations } from '@/lib/db/schema'
+import { eq, and, asc, count, inArray } from 'drizzle-orm'
 import { TEMPLATES } from '@/lib/db/templates'
 
 // ---------- helpers ----------
@@ -262,8 +262,22 @@ export async function deleteQuestion(questionId: string) {
 export async function deleteForm(formId: string) {
   const { db } = await verifyFormOwnership(formId)
 
-  // Questions cascade-delete via FK onDelete: 'cascade'
-  // Sessions reference forms but don't cascade — they remain for audit
+  // Must delete in FK-dependency order:
+  // generations → briefs → sessions → questions → form
+  const formSessions = await db
+    .select({ id: sessions.id })
+    .from(sessions)
+    .where(eq(sessions.formId, formId))
+
+  if (formSessions.length > 0) {
+    const sessionIds = formSessions.map((s) => s.id)
+    await db.delete(generations).where(inArray(generations.sessionId, sessionIds))
+    await db.delete(briefs).where(inArray(briefs.sessionId, sessionIds))
+    await db.delete(sessions).where(eq(sessions.formId, formId))
+  }
+
+  // Questions cascade via FK, but explicit delete is clearer
+  await db.delete(questions).where(eq(questions.formId, formId))
   await db.delete(forms).where(eq(forms.id, formId))
 
   return { deleted: true }

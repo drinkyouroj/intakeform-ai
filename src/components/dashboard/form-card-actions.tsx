@@ -36,9 +36,14 @@ export function FormCardActions({ formId, formTitle, hasIntakes }: FormCardActio
 
   function handleDelete() {
     startTransition(async () => {
-      await deleteForm(formId)
-      setDeleteOpen(false)
-      router.refresh()
+      try {
+        await deleteForm(formId)
+        setDeleteOpen(false)
+        router.refresh()
+      } catch {
+        alert('Failed to delete form. Please try again.')
+        setDeleteOpen(false)
+      }
     })
   }
 
