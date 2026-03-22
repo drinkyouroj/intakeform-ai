@@ -150,6 +150,7 @@ export async function POST(req: Request) {
     (questionData?.aiFollowUp as Record<string, unknown>) ?? { enabled: false }
 
   let followUpResult = null
+  let finalVersion = result[0].version!
 
   if (
     aiConfig.enabled &&
@@ -181,15 +182,19 @@ export async function POST(req: Request) {
           updatedAnswers[idx] = { ...entry, followUps: fups }
         }
 
+        const nextVersion = finalVersion + 1
+
         // Update session state with the new follow-up
         await db
           .update(sessions)
           .set({
             state: { ...newState, answers: updatedAnswers },
-            version: session.version! + 2,
+            version: nextVersion,
             updatedAt: new Date(),
           })
           .where(eq(sessions.id, sessionId))
+
+        finalVersion = nextVersion
 
         followUpResult = {
           question: generation.result.question,
@@ -227,7 +232,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     success: true,
-    version: result[0].version,
+    version: finalVersion,
     followUp: followUpResult,
   })
 }
