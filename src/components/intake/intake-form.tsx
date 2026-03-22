@@ -225,13 +225,16 @@ export function IntakeForm({
     async (questionId: string, answer: string) => {
       if (!sessionId) return
 
-      // Optimistically update the follow-up answer
+      // Optimistically update the first unanswered follow-up
       setAnswers((prev) => {
         const entry = prev[questionId]
         if (!entry) return prev
         const fups = [...entry.followUps]
-        if (fups.length > 0) {
-          fups[fups.length - 1] = { ...fups[fups.length - 1], answer }
+        const unansweredIdx = fups.findIndex(
+          (fu) => fu.answer === null || fu.answer === undefined,
+        )
+        if (unansweredIdx >= 0) {
+          fups[unansweredIdx] = { ...fups[unansweredIdx], answer }
         }
         return { ...prev, [questionId]: { ...entry, followUps: fups } }
       })

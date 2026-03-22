@@ -42,11 +42,12 @@ export function FollowUpRegion({
   const [submitted, setSubmitted] = useState(false)
 
   const handleSubmit = useCallback(() => {
+    if (submitted) return
     const trimmed = localValue.trim()
     if (!trimmed) return
     setSubmitted(true)
     onAnswer(trimmed)
-  }, [localValue, onAnswer])
+  }, [localValue, onAnswer, submitted])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

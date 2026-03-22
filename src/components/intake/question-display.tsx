@@ -172,18 +172,19 @@ export function QuestionDisplay({
         )}
       </div>
 
-      {/* Follow-up regions */}
+      {/* Answered follow-ups (read-only) */}
       {followUps.slice(0, -1).map((fu, i) => (
         <FollowUpRegion
-          key={i}
+          key={`${questionId}-fu-${i}`}
           followUp={fu}
           isLoading={false}
-          onAnswer={(ans) => onFollowUpAnswer(questionId, ans)}
+          onAnswer={() => {}} // Already answered, no-op
         />
       ))}
 
-      {/* Latest follow-up (may be loading) */}
+      {/* Latest follow-up (may be loading or awaiting answer) */}
       <FollowUpRegion
+        key={`${questionId}-fu-latest-${followUps.length}`}
         followUp={latestFollowUp}
         isLoading={pendingFollowUp && !latestFollowUp}
         onAnswer={(ans) => onFollowUpAnswer(questionId, ans)}

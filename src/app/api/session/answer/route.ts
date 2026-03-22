@@ -61,21 +61,23 @@ export async function POST(req: Request) {
   const followUps =
     (existingAnswer?.followUps as Array<Record<string, unknown>>) ?? []
 
-  // Determine if this is a follow-up answer or a primary answer
+  // Determine if this is a follow-up answer or a primary answer.
+  // It's a follow-up answer if there's an unanswered follow-up (answer is null).
+  const unansweredFollowUpIndex = followUps.findIndex(
+    (fu: Record<string, unknown>) => fu.answer === null || fu.answer === undefined,
+  )
   const isFollowUpAnswer =
-    existingAnswer !== null && !existingAnswer.followUpPending
+    existingAnswer !== null && unansweredFollowUpIndex >= 0
 
   let newAnswers: Array<Record<string, unknown>>
 
   if (existingAnswer && isFollowUpAnswer) {
-    // This is answering a follow-up question — append to followUps
+    // This is answering a specific unanswered follow-up question
     const updatedFollowUps = [...followUps]
-    if (updatedFollowUps.length > 0) {
-      updatedFollowUps[updatedFollowUps.length - 1] = {
-        ...updatedFollowUps[updatedFollowUps.length - 1],
-        answer: sanitizedAnswer,
-        answeredAt: new Date().toISOString(),
-      }
+    updatedFollowUps[unansweredFollowUpIndex] = {
+      ...updatedFollowUps[unansweredFollowUpIndex],
+      answer: sanitizedAnswer,
+      answeredAt: new Date().toISOString(),
     }
     newAnswers = [...answers]
     newAnswers[existingIndex] = {
@@ -83,11 +85,11 @@ export async function POST(req: Request) {
       followUps: updatedFollowUps,
     }
   } else {
-    // Primary answer
+    // Primary answer (new or re-answer)
     const newEntry = {
       questionId,
       answer: sanitizedAnswer,
-      followUps: [],
+      followUps: existingAnswer ? followUps : [],
       answeredAt: new Date().toISOString(),
     }
     if (existingIndex >= 0) {
