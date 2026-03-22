@@ -230,6 +230,7 @@ function MultiselectInput({
 
   const containerRef = useRef<HTMLDivElement>(null)
   const confirmedRef = useRef(false)
+  const clickingInsideRef = useRef(false)
 
   const handleConfirm = useCallback(() => {
     if (confirmedRef.current || locked) return
@@ -239,12 +240,21 @@ function MultiselectInput({
     }
   }, [localSelected, onConfirm, locked])
 
-  // Auto-submit when focus leaves the entire multiselect area.
-  // Use requestAnimationFrame to wait for the new activeElement to settle,
-  // since relatedTarget can be null when clicking between checkboxes.
+  // Track mousedown inside the container to distinguish internal clicks
+  // (on labels, checkboxes) from genuine focus-away events. Labels aren't
+  // focusable, so activeElement checks alone can't detect them.
+  const handleMouseDown = useCallback(() => {
+    clickingInsideRef.current = true
+    requestAnimationFrame(() => {
+      clickingInsideRef.current = false
+    })
+  }, [])
+
+  // Auto-submit when focus genuinely leaves the multiselect area.
   const handleBlur = useCallback(
     () => {
       requestAnimationFrame(() => {
+        if (clickingInsideRef.current) return
         if (containerRef.current?.contains(document.activeElement)) return
         if (localSelected.length > 0 && !locked && !confirmedRef.current) {
           handleConfirm()
@@ -255,7 +265,7 @@ function MultiselectInput({
   )
 
   return (
-    <div ref={containerRef} onBlur={handleBlur}>
+    <div ref={containerRef} onBlur={handleBlur} onMouseDown={handleMouseDown}>
       <div className="grid gap-2">
         {options.map((option) => {
           const isChecked = locked
