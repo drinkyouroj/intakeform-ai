@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -228,14 +228,31 @@ function MultiselectInput({
     )
   }
 
-  const handleConfirm = () => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const confirmedRef = useRef(false)
+
+  const handleConfirm = useCallback(() => {
+    if (confirmedRef.current || locked) return
     if (localSelected.length > 0) {
+      confirmedRef.current = true
       onConfirm(localSelected.join('||'))
     }
-  }
+  }, [localSelected, onConfirm, locked])
+
+  // Auto-submit when focus leaves the entire multiselect area
+  const handleBlur = useCallback(
+    (e: React.FocusEvent) => {
+      // Check if the new focus target is still within this container
+      if (containerRef.current?.contains(e.relatedTarget as Node)) return
+      if (localSelected.length > 0 && !locked && !confirmedRef.current) {
+        handleConfirm()
+      }
+    },
+    [handleConfirm, localSelected, locked],
+  )
 
   return (
-    <div>
+    <div ref={containerRef} onBlur={handleBlur}>
       <div className="grid gap-2">
         {options.map((option) => {
           const isChecked = locked
