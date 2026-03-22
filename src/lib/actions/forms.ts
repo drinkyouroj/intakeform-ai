@@ -1,9 +1,11 @@
 'use server'
 
 import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 import { getDb } from '@/lib/db'
 import { forms, questions, providers } from '@/lib/db/schema'
 import { eq, and, asc, count } from 'drizzle-orm'
+import { TEMPLATES } from '@/lib/db/templates'
 
 // ---------- helpers ----------
 
@@ -253,4 +255,64 @@ export async function deleteQuestion(questionId: string) {
   }
 
   return { deleted: true, remainingCount: remaining.total }
+}
+
+// ---------- form delete ----------
+
+export async function deleteForm(formId: string) {
+  const { db } = await verifyFormOwnership(formId)
+
+  // Questions cascade-delete via FK onDelete: 'cascade'
+  // Sessions reference forms but don't cascade — they remain for audit
+  await db.delete(forms).where(eq(forms.id, formId))
+
+  return { deleted: true }
+}
+
+// ---------- create from template ----------
+
+export async function createFormFromTemplate(templateSlug: string | null) {
+  const providerId = await getAuthenticatedProviderId()
+  const db = getDb()
+
+  if (templateSlug) {
+    const template = TEMPLATES.find((t) => t.slug === templateSlug)
+    if (!template) throw new Error('Template not found')
+
+    const [form] = await db
+      .insert(forms)
+      .values({
+        providerId,
+        title: template.title,
+        description: template.description,
+        templateSlug: template.slug,
+        isActive: false,
+      })
+      .returning()
+
+    await db.insert(questions).values(
+      template.questions.map((q) => ({
+        formId: form.id,
+        type: q.type,
+        prompt: q.prompt,
+        options: q.options ?? null,
+        sortOrder: q.sortOrder,
+        aiFollowUp: q.aiFollowUp,
+      }))
+    )
+
+    redirect(`/dashboard/forms/${form.id}/edit`)
+  } else {
+    // Blank form
+    const [form] = await db
+      .insert(forms)
+      .values({
+        providerId,
+        title: 'Untitled Form',
+        isActive: false,
+      })
+      .returning()
+
+    redirect(`/dashboard/forms/${form.id}/edit`)
+  }
 }

@@ -9,10 +9,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Eye } from 'lucide-react'
+import { Eye, FileText } from 'lucide-react'
 
 interface IntakeRow {
   sessionId: string
+  formId: string
   formTitle: string
   clientName: string
   status: string
@@ -65,15 +66,26 @@ export function IntakesTable({ rows }: { rows: IntakeRow[] }) {
             </TableCell>
             <TableCell>{row.date.toLocaleDateString()}</TableCell>
             <TableCell className="text-right">
-              {row.status === 'completed' && (
+              <div className="flex items-center justify-end gap-1">
+                {row.status === 'completed' && (
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    render={<Link href={`/dashboard/briefs/${row.sessionId}`} />}
+                    title="View brief"
+                  >
+                    <Eye />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  render={<Link href={`/dashboard/briefs/${row.sessionId}`} />}
+                  render={<Link href={`/form/${row.formId}`} target="_blank" />}
+                  title="View form"
                 >
-                  <Eye />
+                  <FileText />
                 </Button>
-              )}
+              </div>
             </TableCell>
           </TableRow>
         ))}
