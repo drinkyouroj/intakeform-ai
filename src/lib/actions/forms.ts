@@ -60,6 +60,34 @@ export async function getProviderForms() {
   return providerForms
 }
 
+// ---------- form creation ----------
+
+export async function createForm(data?: { title?: string; description?: string }) {
+  const providerId = await getAuthenticatedProviderId()
+  const db = getDb()
+
+  const [form] = await db
+    .insert(forms)
+    .values({
+      providerId,
+      title: data?.title ?? 'Untitled Form',
+      description: data?.description ?? null,
+      isActive: false,
+    })
+    .returning()
+
+  // Add one starter question
+  await db.insert(questions).values({
+    formId: form.id,
+    prompt: 'What brings you in today?',
+    type: 'text',
+    sortOrder: 1,
+    aiFollowUp: { enabled: true, maxFollowUps: 2 },
+  })
+
+  return form
+}
+
 // ---------- form mutations ----------
 
 export async function updateForm(
