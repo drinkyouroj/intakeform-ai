@@ -11,8 +11,11 @@
  */
 
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { EvalRunSummary } from './runner'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function loadResults(paths: string[]): EvalRunSummary[] {
   return paths.map((p) => {
@@ -22,7 +25,7 @@ function loadResults(paths: string[]): EvalRunSummary[] {
 }
 
 function findResultFiles(): string[] {
-  const resultsDir = join(import.meta.dirname, 'results')
+  const resultsDir = join(__dirname, 'results')
   try {
     const files = readdirSync(resultsDir)
       .filter((f) => f.endsWith('.json'))
@@ -135,7 +138,7 @@ function main() {
 
   const markdown = generateMarkdown(summaries)
 
-  const outputPath = join(import.meta.dirname, 'results', 'report.md')
+  const outputPath = join(__dirname, 'results', 'report.md')
   writeFileSync(outputPath, markdown)
   console.log(`Report written to: ${outputPath}`)
 
