@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Textarea } from '@/components/ui/textarea'
 import { useState, useCallback } from 'react'
+import { followUpReveal, thinkingDot } from '@/lib/motion'
 
 interface FollowUpRegionProps {
   followUp: { question: string; answer?: string | null } | null
@@ -12,15 +13,22 @@ interface FollowUpRegionProps {
 
 function ThinkingDots() {
   return (
-    <div className="flex gap-1 items-center text-muted-foreground text-sm py-2">
+    <div
+      className="flex gap-1.5 items-center py-2 pl-1"
+      role="status"
+      aria-label="AI is thinking"
+    >
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="w-1.5 h-1.5 rounded-full bg-violet-400"
-          animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
+          className="w-1.5 h-1.5 rounded-full bg-[var(--ai-thinking,theme(colors.violet.400))]"
+          variants={thinkingDot(i)}
+          initial="initial"
+          animate="animate"
+          exit="exit"
         />
       ))}
+      <span className="sr-only">AI is processing your answer</span>
     </div>
   )
 }
@@ -56,42 +64,50 @@ export function FollowUpRegion({
     <AnimatePresence>
       {showRegion && (
         <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          variants={followUpReveal}
+          initial="initial"
+          animate="animate"
+          exit="exit"
           className="overflow-hidden"
         >
-          <div className="ml-6 mt-4 pl-4 border-l-[3px] border-violet-400/60 bg-violet-50/50 dark:bg-violet-950/20 rounded-r-lg py-3 pr-4">
-            {isLoading && !followUp ? (
-              <ThinkingDots />
-            ) : followUp ? (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
-              >
-                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  {followUp.question}
-                </p>
-                {followUp.answer || submitted ? (
-                  <p className="text-sm text-muted-foreground">
-                    {followUp.answer || localValue}
+          <div className="ml-6 mt-4 pl-4 border-l-[3px] border-[var(--ai-connector,theme(colors.violet.400/60%))] bg-violet-50/50 dark:bg-violet-950/20 rounded-r-lg py-3 pr-4">
+            <AnimatePresence mode="wait">
+              {isLoading && !followUp ? (
+                <ThinkingDots key="thinking" />
+              ) : followUp ? (
+                <motion.div
+                  key="followup"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.35,
+                    ease: [0.16, 1, 0.3, 1],
+                    delay: 0.1,
+                  }}
+                >
+                  <p className="text-sm font-medium text-foreground mb-2">
+                    {followUp.question}
                   </p>
-                ) : (
-                  <Textarea
-                    value={localValue}
-                    onChange={(e) => setLocalValue(e.target.value)}
-                    onBlur={handleSubmit}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Type your response..."
-                    rows={2}
-                    className="text-sm min-h-[2.5rem] bg-white dark:bg-zinc-900"
-                    autoFocus
-                  />
-                )}
-              </motion.div>
-            ) : null}
+                  {followUp.answer || submitted ? (
+                    <p className="text-sm text-muted-foreground">
+                      {followUp.answer || localValue}
+                    </p>
+                  ) : (
+                    <Textarea
+                      value={localValue}
+                      onChange={(e) => setLocalValue(e.target.value)}
+                      onBlur={handleSubmit}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Type your response..."
+                      rows={2}
+                      className="text-sm min-h-[2.5rem] bg-background"
+                      autoFocus
+                      aria-label="Follow-up response"
+                    />
+                  )}
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
           </div>
         </motion.div>
       )}

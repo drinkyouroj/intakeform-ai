@@ -1,3 +1,6 @@
+'use client'
+
+import { motion } from 'framer-motion'
 import {
   Card,
   CardContent,
@@ -5,6 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { fadeInUp } from '@/lib/motion'
 
 interface BriefSidebarProps {
   formName: string
@@ -44,24 +48,30 @@ export function BriefSidebar({
   briefCreatedAt,
 }: BriefSidebarProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Session Details</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-1">
-        <MetaRow label="Form" value={formName} />
-        <Separator />
-        <MetaRow
-          label="Date completed"
-          value={formatDate(completedAt ?? createdAt)}
-        />
-        <Separator />
-        <MetaRow label="Total answers" value={answerCount} />
-        <Separator />
-        <MetaRow label="Follow-ups asked" value={followUpCount} />
-        <Separator />
-        <MetaRow label="Brief generated" value={formatDate(briefCreatedAt)} />
-      </CardContent>
-    </Card>
+    <motion.div
+      initial={fadeInUp.initial}
+      animate={fadeInUp.animate}
+      transition={{ ...fadeInUp.transition, delay: 0.2 }}
+    >
+      <Card>
+        <CardHeader>
+          <CardTitle>Session Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <MetaRow label="Form" value={formName} />
+          <Separator />
+          <MetaRow
+            label="Date completed"
+            value={formatDate(completedAt ?? createdAt)}
+          />
+          <Separator />
+          <MetaRow label="Total answers" value={answerCount} />
+          <Separator />
+          <MetaRow label="Follow-ups asked" value={followUpCount} />
+          <Separator />
+          <MetaRow label="Brief generated" value={formatDate(briefCreatedAt)} />
+        </CardContent>
+      </Card>
+    </motion.div>
   )
 }
