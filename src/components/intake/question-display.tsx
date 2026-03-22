@@ -25,6 +25,7 @@ interface QuestionDisplayProps {
   pendingFollowUp: boolean
   onAnswer: (questionId: string, answer: string) => void
   onFollowUpAnswer: (questionId: string, answer: string) => void
+  onReset: (questionId: string) => void
 }
 
 export function QuestionDisplay({
@@ -38,6 +39,7 @@ export function QuestionDisplay({
   pendingFollowUp,
   onAnswer,
   onFollowUpAnswer,
+  onReset,
 }: QuestionDisplayProps) {
   const [localTextValue, setLocalTextValue] = useState(currentAnswer ?? '')
   const answered = currentAnswer !== undefined && currentAnswer !== ''
@@ -85,12 +87,25 @@ export function QuestionDisplay({
     <div className="py-6">
       {/* Question header */}
       <div className="mb-3">
-        <span className="text-sm font-medium text-primary">
-          {index + 1}.
-        </span>
-        <h3 className="text-lg font-medium text-foreground mt-1">
-          {prompt}
-        </h3>
+        <div className="flex items-baseline justify-between gap-2">
+          <div>
+            <span className="text-sm font-medium text-primary">
+              {index + 1}.
+            </span>
+            <h3 className="text-lg font-medium text-foreground mt-1">
+              {prompt}
+            </h3>
+          </div>
+          {answered && !pendingFollowUp && (
+            <button
+              type="button"
+              onClick={() => onReset(questionId)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            >
+              Redo
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Input area */}
