@@ -239,14 +239,17 @@ function MultiselectInput({
     }
   }, [localSelected, onConfirm, locked])
 
-  // Auto-submit when focus leaves the entire multiselect area
+  // Auto-submit when focus leaves the entire multiselect area.
+  // Use requestAnimationFrame to wait for the new activeElement to settle,
+  // since relatedTarget can be null when clicking between checkboxes.
   const handleBlur = useCallback(
-    (e: React.FocusEvent) => {
-      // Check if the new focus target is still within this container
-      if (containerRef.current?.contains(e.relatedTarget as Node)) return
-      if (localSelected.length > 0 && !locked && !confirmedRef.current) {
-        handleConfirm()
-      }
+    () => {
+      requestAnimationFrame(() => {
+        if (containerRef.current?.contains(document.activeElement)) return
+        if (localSelected.length > 0 && !locked && !confirmedRef.current) {
+          handleConfirm()
+        }
+      })
     },
     [handleConfirm, localSelected, locked],
   )
