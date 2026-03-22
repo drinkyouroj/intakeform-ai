@@ -39,8 +39,26 @@ function findResultFiles(): string[] {
   }
 }
 
+function isEffectivelyRateLimited(r: EvalRunSummary['results'][number]): boolean {
+  if (r.rateLimited) return true
+  // Old runner marked rate-limit errors as parseError only — detect via rawResponse
+  if (r.parseError && r.rawResponse) {
+    const lower = r.rawResponse.toLowerCase()
+    if (
+      lower.includes('rate limit') ||
+      lower.includes('temporarily') ||
+      lower.includes('try again') ||
+      lower.includes('free credits') ||
+      lower.includes('429')
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
 function getRateLimitedRatio(s: EvalRunSummary): number {
-  const rateLimited = s.results.filter((r) => r.rateLimited).length
+  const rateLimited = s.results.filter(isEffectivelyRateLimited).length
   return s.fixtureCount > 0 ? rateLimited / s.fixtureCount : 0
 }
 
@@ -166,7 +184,7 @@ function generateMarkdown(
     lines.push('|----------|---------|-------|----------|')
 
     for (const cat of categories) {
-      const catResults = s.results.filter((r) => r.category === cat && !r.rateLimited)
+      const catResults = s.results.filter((r) => r.category === cat && !isEffectivelyRateLimited(r))
       if (catResults.length === 0) continue
       const correct = catResults.filter((r) => r.correct).length
       const acc = ((correct / catResults.length) * 100).toFixed(0)
@@ -176,7 +194,7 @@ function generateMarkdown(
     lines.push('')
 
     // Failures detail (exclude rate-limited)
-    const failures = s.results.filter((r) => !r.correct && !r.rateLimited)
+    const failures = s.results.filter((r) => !r.correct && !isEffectivelyRateLimited(r))
     if (failures.length > 0) {
       lines.push('### Failures')
       lines.push('')
@@ -194,7 +212,7 @@ function generateMarkdown(
     }
 
     // Parse errors (exclude rate-limited)
-    const parseErrors = s.results.filter((r) => r.parseError && !r.rateLimited)
+    const parseErrors = s.results.filter((r) => r.parseError && !isEffectivelyRateLimited(r))
     if (parseErrors.length > 0) {
       lines.push('### Parse Errors')
       lines.push('')
