@@ -154,8 +154,8 @@ export function QuestionDisplay({
           <MultiselectInput
             options={options as string[]}
             currentAnswer={currentAnswer}
-            onAnswer={(val) => onAnswer(questionId, val)}
-            disabled={locked}
+            onConfirm={(val) => onAnswer(questionId, val)}
+            locked={locked}
           />
         )}
 
@@ -204,82 +204,105 @@ export function QuestionDisplay({
 function MultiselectInput({
   options,
   currentAnswer,
-  onAnswer,
-  disabled,
+  onConfirm,
+  locked,
 }: {
   options: string[]
   currentAnswer?: string
-  onAnswer: (value: string) => void
-  disabled?: boolean
+  onConfirm: (value: string) => void
+  locked?: boolean
 }) {
-  const selected: string[] = currentAnswer ? currentAnswer.split('||') : []
+  const committed: string[] = currentAnswer ? currentAnswer.split('||') : []
+  const [localSelected, setLocalSelected] = useState<string[]>(committed)
+  const hasLocalChanges =
+    !locked && localSelected.length > 0 &&
+    (localSelected.length !== committed.length ||
+      localSelected.some((s) => !committed.includes(s)))
 
   const toggle = (option: string) => {
-    if (disabled) return
-    const next = selected.includes(option)
-      ? selected.filter((s) => s !== option)
-      : [...selected, option]
-    if (next.length > 0) {
-      onAnswer(next.join('||'))
+    if (locked) return
+    setLocalSelected((prev) =>
+      prev.includes(option)
+        ? prev.filter((s) => s !== option)
+        : [...prev, option],
+    )
+  }
+
+  const handleConfirm = () => {
+    if (localSelected.length > 0) {
+      onConfirm(localSelected.join('||'))
     }
   }
 
   return (
-    <div className="grid gap-2">
-      {options.map((option) => {
-        const isChecked = selected.includes(option)
-        return (
-          <label
-            key={option}
-            className={cn(
-              'flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors',
-              disabled ? 'cursor-default' : 'cursor-pointer hover:bg-muted',
-              isChecked &&
-                'border-violet-300 bg-violet-50/50 dark:border-violet-700 dark:bg-violet-950/30',
-            )}
-          >
-            <div
+    <div>
+      <div className="grid gap-2">
+        {options.map((option) => {
+          const isChecked = locked
+            ? committed.includes(option)
+            : localSelected.includes(option)
+          return (
+            <label
+              key={option}
               className={cn(
-                'flex items-center justify-center size-4 shrink-0 rounded border transition-colors',
-                isChecked
-                  ? 'bg-violet-500 border-violet-500 text-white'
-                  : 'border-input',
+                'flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors',
+                locked ? 'cursor-default' : 'cursor-pointer hover:bg-muted',
+                isChecked &&
+                  'border-violet-300 bg-violet-50/50 dark:border-violet-700 dark:bg-violet-950/30',
               )}
-              onClick={() => toggle(option)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  toggle(option)
-                }
-              }}
-              role="checkbox"
-              aria-checked={isChecked}
-              aria-disabled={disabled}
-              tabIndex={disabled ? -1 : 0}
             >
-              {isChecked && (
-                <svg
-                  className="size-3"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M2.5 6L5 8.5L9.5 3.5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
-            </div>
-            <span className="text-sm text-foreground">
-              {option}
-            </span>
-          </label>
-        )
-      })}
+              <div
+                className={cn(
+                  'flex items-center justify-center size-4 shrink-0 rounded border transition-colors',
+                  isChecked
+                    ? 'bg-violet-500 border-violet-500 text-white'
+                    : 'border-input',
+                )}
+                onClick={() => toggle(option)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    toggle(option)
+                  }
+                }}
+                role="checkbox"
+                aria-checked={isChecked}
+                aria-disabled={locked}
+                tabIndex={locked ? -1 : 0}
+              >
+                {isChecked && (
+                  <svg
+                    className="size-3"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M2.5 6L5 8.5L9.5 3.5"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </div>
+              <span className="text-sm text-foreground">
+                {option}
+              </span>
+            </label>
+          )
+        })}
+      </div>
+      {hasLocalChanges && (
+        <button
+          type="button"
+          onClick={handleConfirm}
+          className="mt-3 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+        >
+          Confirm selection
+        </button>
+      )}
     </div>
   )
 }
