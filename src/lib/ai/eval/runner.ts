@@ -84,9 +84,11 @@ export interface EvalResult {
   rateLimited: boolean
 }
 
-// ── Retry helpers ────────────────────────────────────────────────────
+// ── Throttle & retry config ──────────────────────────────────────────
 const MAX_RETRIES = 3
 const BASE_DELAY_MS = 2000
+const DEFAULT_INTER_FIXTURE_DELAY_MS = 1500
+const RATE_LIMIT_DELAY_INCREASE_MS = 3000
 
 function isRateLimitError(text: string): boolean {
   const lower = text.toLowerCase()
@@ -261,22 +263,51 @@ function computeSummary(model: string, results: EvalResult[]): EvalRunSummary {
   }
 }
 
+function parseCliArgs() {
+  const args = process.argv.slice(2)
+  let model = ''
+  let delayMs = DEFAULT_INTER_FIXTURE_DELAY_MS
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--delay' && args[i + 1]) {
+      delayMs = parseInt(args[i + 1], 10)
+      i++ // skip next arg
+    } else if (!args[i].startsWith('--')) {
+      model = args[i]
+    }
+  }
+
+  return { model, delayMs }
+}
+
 async function main() {
-  const model = process.argv[2]
+  const { model, delayMs: initialDelay } = parseCliArgs()
   if (!model) {
-    console.error('Usage: npx tsx src/lib/ai/eval/runner.ts <model-name>')
-    console.error('Example: npx tsx src/lib/ai/eval/runner.ts groq/llama-3.3-70b-versatile')
+    console.error('Usage: npx tsx src/lib/ai/eval/runner.ts <model-name> [--delay <ms>]')
+    console.error('Example: npx tsx src/lib/ai/eval/runner.ts groq/llama-3.3-70b-versatile --delay 2000')
+    console.error('\nOptions:')
+    console.error('  --delay <ms>   Delay between fixtures in ms (default: 1500)')
     process.exit(1)
   }
+
+  let interFixtureDelay = initialDelay
 
   console.log(`\n=== IntakeForm.ai Model Evaluation ===`)
   console.log(`Model: ${model}`)
   console.log(`Fixtures: ${evalFixtures.length}`)
+  console.log(`Inter-fixture delay: ${interFixtureDelay}ms`)
   console.log(`Started: ${new Date().toISOString()}\n`)
 
   const results: EvalResult[] = []
 
-  for (const fixture of evalFixtures) {
+  for (let fi = 0; fi < evalFixtures.length; fi++) {
+    const fixture = evalFixtures[fi]
+
+    // Throttle between fixtures (skip delay before the first one)
+    if (fi > 0) {
+      await sleep(interFixtureDelay)
+    }
+
     process.stdout.write(`  [${fixture.id}] ${fixture.category.padEnd(12)} `)
 
     const result = await runFixture(fixture, model)
@@ -289,6 +320,9 @@ async function main() {
         : ''
     if (result.rateLimited) {
       console.log(`⏭ SKIP | ${result.latencyMs}ms | rate limited after retries${flag}`)
+      // Increase delay for remaining fixtures to avoid further rate limits
+      interFixtureDelay += RATE_LIMIT_DELAY_INCREASE_MS
+      console.log(`    ⚙ Increased inter-fixture delay to ${interFixtureDelay}ms`)
     } else {
       const status = result.correct ? 'PASS' : 'FAIL'
       const icon = result.correct ? '\u2713' : '\u2717'

@@ -10,7 +10,9 @@
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "eval": "tsx src/lib/ai/eval/runner.ts",
+    "eval:report": "tsx src/lib/ai/eval/report.ts"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^3.0.66",
